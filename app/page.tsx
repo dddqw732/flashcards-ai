@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { PLANS } from "@/lib/plans";
 
 const features = [
   {
@@ -100,8 +102,11 @@ const changingTexts = [
   "automatically",
 ];
 
-// Particle component
-const Particle = ({ delay }: { delay: number }) => {
+// Particle component with fixed positions to prevent hydration mismatch
+const Particle = ({ delay, index }: { delay: number; index: number }) => {
+  // Use deterministic positions based on index to prevent hydration mismatch
+  const leftPosition = ((index * 17.3) % 100);
+  
   return (
     <motion.div
       className="absolute w-1 h-1 bg-blue-400/30 rounded-full"
@@ -117,15 +122,66 @@ const Particle = ({ delay }: { delay: number }) => {
         ease: "linear",
       }}
       style={{
-        left: Math.random() * 100 + "%",
+        left: `${leftPosition}%`,
         bottom: -10,
       }}
     />
   );
 };
 
+function SubscriptionPlans({ user }: { user: any }) {
+  const [loading, setLoading] = useState<string | null>(null);
+
+  const handleSubscribe = async (variantId: string) => {
+    setLoading(variantId);
+    try {
+      const email = user?.email;
+      if (!email) throw new Error("You must be signed in to subscribe.");
+      const returnUrl = window.location.origin + "/dashboard";
+      const res = await fetch('/api/lemonsqueezy/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantId, email, returnUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Checkout failed');
+      window.location.href = data.url;
+    } catch (err) {
+      alert("Failed to start checkout: " + (err as any).message);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  return (
+    <section className="max-w-4xl mx-auto w-full py-16 px-6 md:px-0 text-center relative z-10" id="plans">
+      <h2 className="text-3xl font-bold text-white mb-8">Subscription Plans</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {PLANS.map((plan) => (
+          <div key={plan.id} className="bg-gray-800/80 rounded-2xl p-8 border border-gray-700/50 shadow-xl flex flex-col items-center">
+            <h3 className="text-xl font-bold text-blue-400 mb-2">{plan.name}</h3>
+            <div className="text-2xl font-bold text-white mb-2">{plan.price}</div>
+            <div className="text-gray-300 mb-4">{plan.description}</div>
+            <ul className="text-gray-400 text-sm mb-6 text-left list-disc list-inside">
+              {plan.features.map((f, i) => <li key={i}>{f}</li>)}
+            </ul>
+            <button
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium transition-colors disabled:opacity-60"
+              onClick={() => handleSubscribe(plan.variantId)}
+              disabled={loading === plan.variantId}
+            >
+              {loading === plan.variantId ? "Redirecting..." : "Subscribe"}
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function Home() {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -138,7 +194,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 flex flex-col relative overflow-hidden">
       {/* Moving Particles Background */}
       {Array.from({ length: 50 }).map((_, i) => (
-        <Particle key={i} delay={i * 0.3} />
+        <Particle key={i} delay={i * 0.3} index={i} />
       ))}
       
       {/* Header */}
@@ -177,15 +233,48 @@ export default function Home() {
             Reviews
           </motion.a>
         </nav>
-        <Link href="/convert">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition-colors font-medium"
-          >
-            Get Started
-          </motion.button>
-        </Link>
+        <div className="flex items-center gap-4">
+          {user ? (
+            <>
+              <Link href="/dashboard">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="text-gray-300 hover:text-blue-400 px-4 py-2 transition-colors font-medium"
+                >
+                  Dashboard
+                </motion.button>
+              </Link>
+              <button
+                onClick={() => signOut()}
+                className="text-gray-300 hover:text-red-400 px-4 py-2 transition-colors font-medium"
+              >
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/auth">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="text-gray-300 hover:text-blue-400 px-4 py-2 transition-colors font-medium"
+                >
+                  Sign In
+                </motion.button>
+              </Link>
+              <Link href="/convert">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition-colors font-medium"
+                >
+                  Get Started
+                </motion.button>
+              </Link>
+            </>
+          )}
+        </div>
       </motion.header>
 
       {/* Hero Section */}
@@ -234,15 +323,27 @@ export default function Home() {
           transition={{ duration: 0.8, delay: 0.8 }}
           className="flex flex-col sm:flex-row gap-4 mb-16"
         >
-          <Link href="/convert">
-            <motion.button
-              whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(59, 130, 246, 0.3)" }}
-              whileTap={{ scale: 0.98 }}
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold rounded-full px-10 py-4 text-xl shadow-xl transition-all duration-300"
-            >
-              Start Creating Flashcards
-            </motion.button>
-          </Link>
+          {user ? (
+            <Link href="/convert">
+              <motion.button
+                whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(59, 130, 246, 0.3)" }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold rounded-full px-10 py-4 text-xl shadow-xl transition-all duration-300"
+              >
+                Start Creating Flashcards
+              </motion.button>
+            </Link>
+          ) : (
+            <Link href="/auth">
+              <motion.button
+                whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(59, 130, 246, 0.3)" }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold rounded-full px-10 py-4 text-xl shadow-xl transition-all duration-300"
+              >
+                Sign Up & Start Creating
+              </motion.button>
+            </Link>
+          )}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.98 }}
@@ -368,6 +469,9 @@ export default function Home() {
           ))}
         </ol>
       </section>
+
+      {/* Subscription Plans Section */}
+      <SubscriptionPlans user={user} />
 
       {/* Testimonials Section */}
       <section id="testimonials" className="max-w-6xl mx-auto w-full py-20 px-6 md:px-0 relative z-10">
