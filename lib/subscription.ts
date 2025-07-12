@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Use service role key for server-side operations
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null;
 
 export interface UserSubscription {
   id: string;
@@ -21,6 +21,11 @@ export interface UserSubscription {
 }
 
 export async function getUserSubscription(userId: string): Promise<UserSubscription | null> {
+  if (!supabase) {
+    console.error('Supabase client not initialized');
+    return null;
+  }
+
   const { data, error } = await supabase
     .from('user_subscriptions')
     .select('*')
@@ -66,6 +71,11 @@ export async function getSubscriptionLimits(userId: string): Promise<{
 }
 
 export async function canCreateFlashcard(userId: string): Promise<boolean> {
+  if (!supabase) {
+    console.error('Supabase client not initialized');
+    return false;
+  }
+
   const limits = await getSubscriptionLimits(userId);
   
   if (limits.hasUnlimitedFlashcards) {

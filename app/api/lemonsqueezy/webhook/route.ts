@@ -2,22 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const webhookSecret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET!;
-
-// Use service role key for webhook operations
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-function verifySignature(payload: string, signature: string): boolean {
-  const hmac = crypto.createHmac('sha256', webhookSecret);
-  hmac.update(payload);
-  const digest = hmac.digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
-}
-
 export async function POST(request: NextRequest) {
   try {
+    // Check environment variables
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const webhookSecret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
+
+    if (!supabaseUrl || !supabaseServiceKey || !webhookSecret) {
+      console.error('Missing required environment variables');
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     const payload = await request.text();
     const signature = request.headers.get('x-signature');
 
@@ -26,7 +24,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify webhook signature
-    if (!verifySignature(payload, signature)) {
+    const hmac = crypto.createHmac('sha256', webhookSecret);
+    hmac.update(payload);
+    const digest = hmac.digest('hex');
+    const isValid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+
+    if (!isValid) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
@@ -47,25 +50,25 @@ export async function POST(request: NextRequest) {
     // Process different event types
     switch (eventName) {
       case 'subscription_created':
-        await handleSubscriptionCreated(event);
+        await handleSubscriptionCreated(event, supabase);
         break;
       case 'subscription_updated':
-        await handleSubscriptionUpdated(event);
+        await handleSubscriptionUpdated(event, supabase);
         break;
       case 'subscription_cancelled':
-        await handleSubscriptionCancelled(event);
+        await handleSubscriptionCancelled(event, supabase);
         break;
       case 'subscription_resumed':
-        await handleSubscriptionResumed(event);
+        await handleSubscriptionResumed(event, supabase);
         break;
       case 'subscription_expired':
-        await handleSubscriptionExpired(event);
+        await handleSubscriptionExpired(event, supabase);
         break;
       case 'subscription_paused':
-        await handleSubscriptionPaused(event);
+        await handleSubscriptionPaused(event, supabase);
         break;
       case 'subscription_unpaused':
-        await handleSubscriptionUnpaused(event);
+        await handleSubscriptionUnpaused(event, supabase);
         break;
       default:
         console.log(`Unhandled event type: ${eventName}`);
@@ -84,9 +87,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleSubscriptionCreated(event: any) {
+async function handleSubscriptionCreated(event: any, supabase: any) {
   const subscription = event.data;
-  const customData = event.meta?.custom_data || {};
   
   // Extract user email from the subscription data
   const userEmail = subscription.attributes?.user_email;
@@ -104,7 +106,7 @@ async function handleSubscriptionCreated(event: any) {
     return;
   }
 
-  const user = users.users.find(u => u.email === userEmail);
+  const user = users.users.find((u: any) => u.email === userEmail);
   
   if (!user) {
     console.error('User not found with email:', userEmail);
@@ -130,7 +132,7 @@ async function handleSubscriptionCreated(event: any) {
     });
 }
 
-async function handleSubscriptionUpdated(event: any) {
+async function handleSubscriptionUpdated(event: any, supabase: any) {
   const subscription = event.data;
   
   await supabase
@@ -143,7 +145,7 @@ async function handleSubscriptionUpdated(event: any) {
     .eq('lemonsqueezy_subscription_id', subscription.id);
 }
 
-async function handleSubscriptionCancelled(event: any) {
+async function handleSubscriptionCancelled(event: any, supabase: any) {
   const subscription = event.data;
   
   await supabase
@@ -155,7 +157,7 @@ async function handleSubscriptionCancelled(event: any) {
     .eq('lemonsqueezy_subscription_id', subscription.id);
 }
 
-async function handleSubscriptionResumed(event: any) {
+async function handleSubscriptionResumed(event: any, supabase: any) {
   const subscription = event.data;
   
   await supabase
@@ -168,7 +170,7 @@ async function handleSubscriptionResumed(event: any) {
     .eq('lemonsqueezy_subscription_id', subscription.id);
 }
 
-async function handleSubscriptionExpired(event: any) {
+async function handleSubscriptionExpired(event: any, supabase: any) {
   const subscription = event.data;
   
   await supabase
@@ -179,7 +181,7 @@ async function handleSubscriptionExpired(event: any) {
     .eq('lemonsqueezy_subscription_id', subscription.id);
 }
 
-async function handleSubscriptionPaused(event: any) {
+async function handleSubscriptionPaused(event: any, supabase: any) {
   const subscription = event.data;
   
   await supabase
@@ -190,7 +192,7 @@ async function handleSubscriptionPaused(event: any) {
     .eq('lemonsqueezy_subscription_id', subscription.id);
 }
 
-async function handleSubscriptionUnpaused(event: any) {
+async function handleSubscriptionUnpaused(event: any, supabase: any) {
   const subscription = event.data;
   
   await supabase
