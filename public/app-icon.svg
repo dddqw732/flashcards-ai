@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <!-- Blue-green gradient seen in the design provided by the user -->
+    <linearGradient id="iconGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00F5A0" />
+      <stop offset="100%" stop-color="#009FFD" />
+    </linearGradient>
+  </defs>
+  <!-- Outer segmented ring -->
+  <!-- We draw the ring twice with different stroke widths & dash arrays to approximate the original "double segment" style -->
+  <circle
+    cx="50"
+    cy="50"
+    r="36"
+    stroke="url(#iconGradient)"
+    stroke-width="12"
+    stroke-linecap="round"
+    stroke-dasharray="60 30"
+    transform="rotate(-20 50 50)"
+  />
+  <circle
+    cx="50"
+    cy="50"
+    r="36"
+    stroke="url(#iconGradient)"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-dasharray="20 30"
+    transform="rotate(-20 50 50)"
+  />
+</svg> 

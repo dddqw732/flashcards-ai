@@ -2,9 +2,13 @@ import axios from 'axios';
 
 const LEMONSQUEEZY_API_KEY = process.env.lemonsqueezy_API_KEY;
 const LEMONSQUEEZY_API_URL = 'https://api.lemonsqueezy.com/v1';
+const LEMONSQUEEZY_STORE_ID = process.env.LEMONSQUEEZY_STORE_ID;
 
 if (!LEMONSQUEEZY_API_KEY) {
   throw new Error('LemonSqueezy API key is not set in environment variables');
+}
+if (!LEMONSQUEEZY_STORE_ID) {
+  throw new Error('LemonSqueezy store ID is not set in environment variables');
 }
 
 export async function createCheckout({ variantId, email, returnUrl }: { variantId: string, email: string, returnUrl: string }) {
@@ -36,7 +40,7 @@ export async function createCheckout({ variantId, email, returnUrl }: { variantI
           store: {
             data: {
               type: 'stores',
-              id: process.env.LEMONSQUEEZY_STORE_ID?.toString() || '1',
+              id: (LEMONSQUEEZY_STORE_ID as string),
             },
           },
           variant: {

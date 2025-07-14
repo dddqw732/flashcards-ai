@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import ytdl from "@distube/ytdl-core";
+import ytdl from "ytdl-core";
 import fs from "fs";
 import { file as tmpFile } from "tmp-promise";
 

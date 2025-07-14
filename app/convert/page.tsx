@@ -1,6 +1,9 @@
 "use client";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Flashcard {
   question: string;
@@ -8,6 +11,8 @@ interface Flashcard {
 }
 
 export default function ConvertPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const [mode, setMode] = useState<"text" | "youtube">("text");
   const [text, setText] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -16,6 +21,7 @@ export default function ConvertPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentCard, setCurrentCard] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   function parseFlashcards(text: string): Flashcard[] {
     // Parse the AI response which should be in Anki format (question|answer per line)
@@ -95,6 +101,37 @@ export default function ConvertPage() {
     }
   }
 
+  async function handleSave() {
+    if (!user) {
+      alert("You must be signed in to save flashcards. Redirecting to sign-in page…");
+      router.push("/auth");
+      return;
+    }
+    const title = prompt("Enter a title for this flashcard set:");
+    if (!title) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/save-flashcards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          description: "Generated via Convert tool",
+          flashcards,
+          userId: user.id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save flashcards");
+      // Redirect to dashboard to view the new set
+      router.push("/dashboard");
+    } catch (e: any) {
+      alert(e.message || "Error saving flashcards");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function downloadAnkiFile() {
     if (flashcards.length === 0) return;
     
@@ -125,6 +162,16 @@ export default function ConvertPage() {
         transition={{ repeat: Infinity, duration: 10, ease: "easeInOut" }}
       />
       
+      {/* Top Navigation */}
+      <header className="absolute top-4 left-4 z-20">
+        <Link href="/dashboard" className="flex items-center gap-2 text-gray-300 hover:text-white bg-gray-800/60 px-3 py-2 rounded-lg border border-gray-700/50 backdrop-blur-sm">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Dashboard
+        </Link>
+      </header>
+
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
@@ -242,6 +289,15 @@ export default function ConvertPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Export to Anki
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition-colors font-medium shadow-lg disabled:opacity-60"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? "Saving…" : "Save to Dashboard"}
               </motion.button>
             </div>
             

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase'
-import { cookies } from 'next/headers'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,8 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Supabase client with server-side auth
-    const cookieStore = cookies()
-    const supabase = createClient()
+    const supabase = createSupabaseClient(supabaseUrl, serviceRoleKey)
     
     // For now, skip auth verification since we have the userId
     // In production, you should verify the auth token

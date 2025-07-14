@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Flashcards AI - AI-Powered Flashcard Generator",
   description: "Convert any text or video into smart flashcards using AI. Export to Anki and boost your learning.",
+  icons: {
+    icon: "/app-icon.svg",
+  },
 };
 
 export default function RootLayout({
